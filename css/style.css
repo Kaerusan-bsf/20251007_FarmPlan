@@ -1,0 +1,87 @@
+/* 🌱 FarmPlan 共通スタイル（スマホ最適化） */
+body {
+    font-family: system-ui, sans-serif;
+    background: #f9fafb;
+    margin: 0;
+    padding: 1em;
+  }
+  
+  .container {
+    max-width: 480px;
+    margin: auto;
+    background: #fff;
+    padding: 1.2em;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  
+  h1, h2 {
+    text-align: center;
+    color: #0A84FF;
+    font-size: 1.4em;
+  }
+  
+  input, select {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1em;
+  }
+  
+  button, .btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background: #0A84FF;
+    color: #fff;
+  }
+  .btn-primary:hover { background: #0066cc; }
+  
+  .btn-success {
+    background: #4CAF50;
+    color: #fff;
+  }
+  .btn-success:hover { background: #2e7d32; }
+  
+  .btn-outline {
+    background: #fff;
+    border: 1px solid #999;
+    color: #333;
+  }
+  .btn-outline:hover { background: #eee; }
+  
+  .message {
+    text-align: center;
+    padding: 0.8em;
+    margin-bottom: 1em;
+    border-radius: 6px;
+  }
+  .message.success { background: #e8f5e9; color: #2e7d32; }
+  .message.error { background: #ffebee; color: #c62828; }
+  
+  /* スマホでのフォーム間隔を広く */
+  form label {
+    font-weight: bold;
+    margin-top: 8px;
+    display: block;
+    font-size: 0.9em;
+  }
+  
+  /* ナビボタン（次へ／戻る） */
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
