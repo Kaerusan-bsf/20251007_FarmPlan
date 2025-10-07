@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ------------------------------------------------------------
-// 登録済み原料を取得してブレンド計算
+// 登録済み原料の取得＋HFブレンド自動計算
 // ------------------------------------------------------------
 $recipe_rows = [];
 $blend_price = 0;
@@ -61,7 +61,7 @@ if ($plan_id) {
   $stmt->execute([$plan_id]);
   $recipe_rows = $stmt->fetchAll();
 
-  // 自動ブレンド計算
+  // 自動HFブレンド計算（加重平均）
   $total_ratio = 0;
   foreach ($recipe_rows as $r) { $total_ratio += $r['ratio_pct']; }
   if ($total_ratio > 0) {
@@ -74,6 +74,30 @@ if ($plan_id) {
     $blend_cp = round($blend_cp, 1);
   }
 }
+
+// ------------------------------------------------------------
+// HF/CF登録後の最終ブレンド結果を表示
+// ------------------------------------------------------------
+$hf_ratio = $hf_price = $hf_cp = $cf_price = $cf_cp = 0;
+$total_blend_price = $total_blend_cp = null;
+
+if ($plan_id) {
+  $stmt = $pdo->prepare("SELECT * FROM plan_feed_mix WHERE plan_id=? ORDER BY id DESC LIMIT 1");
+  $stmt->execute([$plan_id]);
+  $mix = $stmt->fetch();
+
+  if ($mix) {
+    $hf_ratio = $mix['hf_ratio_pct'];
+    $hf_price = $mix['hf_blend_price_khrkg'];
+    $hf_cp    = $mix['hf_blend_cp_pct'];
+    $cf_price = $mix['cf_price_khrkg'];
+    $cf_cp    = $mix['cf_cp_pct'];
+
+    // HF/CF混合後の最終ブレンド価格・CPを計算
+    $total_blend_price = round(($hf_ratio / 100) * $hf_price + ((100 - $hf_ratio) / 100) * $cf_price);
+    $total_blend_cp    = round(($hf_ratio / 100) * $hf_cp + ((100 - $hf_ratio) / 100) * $cf_cp, 1);
+  }
+}
 ?>
 <!doctype html>
 <html lang="ja">
@@ -84,6 +108,7 @@ if ($plan_id) {
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
 <div class="container">
   <h2>Feed情報を登録</h2>
 
@@ -92,24 +117,29 @@ if ($plan_id) {
   <?php endif; ?>
 
   <!-- ---------------------------------------------------------- -->
-  <!-- 原料登録フォーム -->
+  <!-- 🧱 原料登録フォーム -->
   <!-- ---------------------------------------------------------- -->
   <form method="post">
     <input type="hidden" name="form_type" value="recipe">
     <input type="hidden" name="plan_id" value="<?= htmlspecialchars($plan_id) ?>">
+
     <label>材料名：</label>
     <input type="text" name="ingredient" placeholder="例: Rice bran" required>
+
     <label>比率(%)：</label>
     <input type="number" step="0.1" name="ratio_pct" required>
+
     <label>単価(KHR/kg)：</label>
     <input type="number" name="unit_price_khr" required>
+
     <label>CP(%)：</label>
     <input type="number" step="0.1" name="cp_pct" required>
+
     <button type="submit" class="btn btn-primary">＋ 原料を追加</button>
   </form>
 
   <!-- ---------------------------------------------------------- -->
-  <!-- 登録済み原料一覧 -->
+  <!-- 📋 登録済み原料一覧 -->
   <!-- ---------------------------------------------------------- -->
   <?php if (count($recipe_rows) > 0): ?>
     <table>
@@ -126,45 +156,56 @@ if ($plan_id) {
 
     <!-- 自動計算結果表示 -->
     <div class="message success" style="margin-top:10px;">
-      自動計算：HFブレンド価格 <?= number_format($blend_price) ?> KHR/kg、
-      HFブレンドCP <?= $blend_cp ?>%
+      🧮 HFブレンド結果：<br>
+      💰 価格 = <?= number_format($blend_price) ?> KHR/kg<br>
+      🧬 CP = <?= $blend_cp ?> %
     </div>
   <?php endif; ?>
 
   <!-- ---------------------------------------------------------- -->
-  <!-- HF/CF 配合フォーム -->
+  <!-- ⚙️ HF/CF配合フォーム -->
   <!-- ---------------------------------------------------------- -->
   <form method="post">
     <input type="hidden" name="form_type" value="mix">
     <input type="hidden" name="plan_id" value="<?= htmlspecialchars($plan_id) ?>">
+
     <label>HF比率(%)：</label>
-    <input type="number" name="hf_ratio_pct" value="50" required>
+    <input type="number" name="hf_ratio_pct" value="<?= htmlspecialchars($hf_ratio ?: 50) ?>" required>
 
     <label>HFブレンド価格(KHR/kg)：</label>
-    <input type="number" name="hf_blend_price_khrkg"
-           value="<?= $blend_price ?>" readonly style="background:#eee;">
+    <input type="number" name="hf_blend_price_khrkg" value="<?= htmlspecialchars($blend_price) ?>" readonly style="background:#eee;">
 
     <label>HFブレンドCP(%)：</label>
-    <input type="number" step="0.1" name="hf_blend_cp_pct"
-           value="<?= $blend_cp ?>" readonly style="background:#eee;">
+    <input type="number" step="0.1" name="hf_blend_cp_pct" value="<?= htmlspecialchars($blend_cp) ?>" readonly style="background:#eee;">
 
     <label>CF価格(KHR/kg)：</label>
-    <input type="number" name="cf_price_khrkg" value="3200" required>
+    <input type="number" name="cf_price_khrkg" value="<?= htmlspecialchars($cf_price ?: 3200) ?>" required>
 
     <label>CF CP(%)：</label>
-    <input type="number" step="0.1" name="cf_cp_pct" value="15" required>
+    <input type="number" step="0.1" name="cf_cp_pct" value="<?= htmlspecialchars($cf_cp ?: 15) ?>" required>
 
     <button type="submit" class="btn btn-primary">配合を登録</button>
   </form>
 
   <!-- ---------------------------------------------------------- -->
-  <!-- 次へボタン -->
+  <!-- 🧮 最終ブレンド結果 -->
+  <!-- ---------------------------------------------------------- -->
+  <?php if ($total_blend_price !== null): ?>
+    <div class="message success" style="margin-top:10px;">
+      🧮 最終ブレンド結果：<br>
+      💰 価格 = <?= number_format($total_blend_price) ?> KHR/kg<br>
+      🧬 CP = <?= $total_blend_cp ?> %
+    </div>
+  <?php endif; ?>
+
+  <!-- ---------------------------------------------------------- -->
+  <!-- 🔘 ナビゲーション -->
   <!-- ---------------------------------------------------------- -->
   <div class="nav-buttons">
     <a href="plan_fingerlings.php" class="btn btn-outline">← 戻る</a>
     <a href="confirm_plan.php?plan_id=<?= htmlspecialchars($plan_id) ?>" class="btn btn-success">次へ → 確認画面へ</a>
   </div>
-
 </div>
+
 </body>
 </html>
